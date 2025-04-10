@@ -97,7 +97,7 @@ fontColor = '000000'
 
 manager = dict()
 
-locked_chats = ["jewelisland"]
+locked_chats = []
 
 def font_parse(x):
     x = x.replace("<font color='#",'< x')
@@ -278,4 +278,4 @@ specials = {'mitvcanal': 56, 'magicc666': 22, 'livenfree': 18, 'eplsiite': 56, '
 
 
 
-bootup(username, password, ["garden","jewelisland"])
+bootup(username, password, [])
