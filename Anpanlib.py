@@ -5,25 +5,16 @@ import random
 import re
 import select
 import socket
+import sys
 import threading
+import core
+import html
 
 """
 ANPANLIB
 SPARKING THE ANPAN
 BY HERENTI
 """
-
-
-def regex(pattern, x, default): return re.search(pattern, x).group(1) if re.search(pattern, x) else default
-
-
-def Auth(user, password):
-    data = urllib.parse.urlencode({"user_id": user, "password": password, "storecookie": "on", "checkerrors": "yes"}).encode()
-    return regex('auth.chatango.com=(.*?);', urllib.request.urlopen("http://chatango.com/login", data).getheader('Set-Cookie'), None)
-
-
-
-manager = dict()
 
 
 #CHAT STUFF
@@ -52,6 +43,17 @@ def chat_send(chat, *x):
 def chat_ping(chat):
         chat_send(chat, "")
 
+def chat_post(chat, msg):
+        msg = str(msg) if type(msg) == bool else msg
+        msg = msg.replace(password, 'cake')
+        msg = font_parse(msg)
+        font = '<n%s/><f x%s%s="%s">' % (nameColor, fontSise, fontColor, 0)
+        if len(msg) > 2500:
+            message, rest = msg[:2500], msg[2500:]
+            chat_send('bmsg', 'fuck', '%s%s' % (font, message))
+            chat_post(rest)
+        else:
+                chat_send(chat, 'bmsg', 'fuck', '%s%s' % (font, msg))
 
 
 #PM STUFF
@@ -84,6 +86,41 @@ def pm_ping():
 
 #UNIVERSAL
 
+username = 'anpanbot'
+password = 'theazter'
+
+prefix = '$'
+
+nameColor = '000000'
+fontSise = '11'
+fontColor = '000000'
+
+manager = dict()
+
+locked_chats = ["jewelisland"]
+
+def font_parse(x):
+    x = x.replace("<font color='#",'< x')
+    x = x.replace('">', '="0">')
+    x = x.replace("'>", '="0">')
+    x = x.replace('="0="0">', '="0">')
+    x = x.replace('<font color="#','<ff x')
+    x = x.replace('</font>','<f x%s%s="%s">' % (fontSise, fontColor, 0))
+    close = '</f>'*x.count('<f x')
+    return x+close
+
+def regex(pattern, x, default):
+        return re.search(pattern, x).group(1) if re.search(pattern, x) else default
+
+def anon_id(_id, uid):
+    return ''.join([str((
+        int(uid[4:][i][-1]) + int((_id if (_id != None and len(_id) == 4) else '3452')[i][-1])
+        )% 10) for i in range(4)])
+
+def Auth(user, password):
+    data = urllib.parse.urlencode({"user_id": user, "password": password, "storecookie": "on", "checkerrors": "yes"}).encode()
+    return regex('auth.chatango.com=(.*?);', urllib.request.urlopen("http://chatango.com/login", data).getheader('Set-Cookie'), None)
+
 def timer(seconds, function, *var):
         event = threading.Event()
         def decorator(*var):
@@ -92,6 +129,25 @@ def timer(seconds, function, *var):
         manager["tasks"].append(event)
         return event
 
+def unescape(text):
+        return html.unescape(text)
+
+def server(group):
+    try:  s_number = str(specials[group])
+    except KeyError:
+        group = re.sub('[-_]', 'q', group)
+        lcv8 = max(int(group[6:9], 36), 1000) if len(group) > 6  else 1000
+        num = (int(group[:5], 36) % lcv8) / lcv8
+        cake, s_number = 0, 0
+        for x in tagserver_weights:
+          cake += float(x[1]) / sum(a[1] for a in tagserver_weights)
+          if(num <= cake) and s_number == 0:
+            s_number += int(x[0])
+    return "s{}.chatango.com".format(s_number)
+
+
+#THE ANPAN
+
 def bootup(username, password, chats):
   manager["tasks"] = []
   manager["chat_sockets"] = {}
@@ -99,9 +155,9 @@ def bootup(username, password, chats):
   pm_login(username, password)
   for i in chats:
     chat_login(i, username, password)
-  lemonize()
+  breadbun()
 
-def lemonize():
+def breadbun():
   manager["cake"] = "T"
   read_byte = b''
   while manager["cake"] == "T":
@@ -125,7 +181,15 @@ def lemonize():
         for i in r:
                 while not read_byte.endswith(b'\x00'):
                         read_byte += i.recv(1024)
-                print(read_byte)
+
+                data = [x.rstrip('\r\n').split(':') for x in read_byte.decode('utf-8').split('\x00')]
+                chat = [a for a in manager["chat_sockets"] if manager["chat_sockets"][a] == i]
+                if len(chat) > 0:
+                        chat = chat[0]
+                else:
+                        chat = "pm"
+                [event_call('self', x[0], chat, x[1:]) for x in data]
+
                 read_byte = b''
         for i in w:
                 content = manager["sendoff"][i][1]
@@ -138,20 +202,65 @@ def lemonize():
 
 
 
-def server(group):
-    try:  s_number = str(specials[group])
-    except KeyError:
-        group = re.sub('[-_]', 'q', group)
-        lcv8 = max(int(group[6:9], 36), 1000) if len(group) > 6  else 1000
-        num = (int(group[:5], 36) % lcv8) / lcv8
-        cake, s_number = 0, 0
-        for x in tagserver_weights:
-          cake += float(x[1]) / sum(a[1] for a in tagserver_weights)
-          if(num <= cake) and s_number == 0:
-            s_number += int(x[0])
-    return "s{}.chatango.com".format(s_number)
+#EVENT HANDLER
 
-#def pm_ping():
+def event_call(target, function, *values):
+        if target == 'self':
+                target = sys.modules[__name__]
+        elif target == 'core':
+                target = core
+        function = '_' + function
+        if hasattr(target, function):
+               return getattr(target, function)(*values)
+
+def _b(chat, data):
+        _id = re.search("<n(.*?)/>", ':'.join(data[9:]))
+        if _id:
+              _id  = _id.group(1)
+        content = ':'.join(data[9:])
+        content = unescape(re.sub('<(.*?)>', '', content))
+        user = data[1]
+        alias = data[2]
+        uid = data[3]
+        ip = data[6]
+        if user == '': user = 'None'
+        if user == 'None':
+                if alias == '' or 'None':
+                        user = '@anon' + anon_id(_id, uid)
+                else: user = '$' + alias
+        user = user.lower()
+        message = dict(
+                chat=chat,
+                uid = uid,
+                cid = data[4],
+                time = data[0],
+                ip = ip,
+                content = content,
+                sid = None,
+                user = user
+                )
+        on_post(message)
+
+def on_post(message):
+        content = message["content"]
+        chat = message["chat"]
+        if len(content) > 0:
+                if chat not in locked_chats:
+                        data = content.split(' ', 1)
+                        if len(data) > 1:
+                                func, string = data[0], data[1]
+                        else:
+                                func, string = data[0].lower(), ""
+                        try:
+                                _prefix = True if func[0] == prefix else False
+                                func = func[1:] if _prefix == True else func
+                        except: _prefix = False
+                        if _prefix:
+                                ret = event_call('core', func, string)
+                                chat_post(chat, ret)
+                        else:
+                                pass
+
 
 #WEIGHTS
 
@@ -169,6 +278,4 @@ specials = {'mitvcanal': 56, 'magicc666': 22, 'livenfree': 18, 'eplsiite': 56, '
 
 
 
-
-
-bootup("", "", [""])
+bootup(username, password, ["garden","jewelisland"])
