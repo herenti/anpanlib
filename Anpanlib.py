@@ -5,7 +5,6 @@ import random
 import re
 import select
 import socket
-import selectors
 import threading
 
 """
