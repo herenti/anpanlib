@@ -87,7 +87,7 @@ def pm_ping():
 #UNIVERSAL
 
 username = 'anpanbot'
-password = 'theazter'
+password = ''
 
 prefix = '$'
 
