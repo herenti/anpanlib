@@ -37,6 +37,7 @@ def chat_login(chat, username, password):
         cumsock.connect((chat_server, chat_port))
         manager["chat_sockets"][chat] = cumsock
         manager["chat_ready"] = "T"
+        manager["chats_wbyte"][chat]= b''
         timer(30, chat_ping, chat)
         chat_send(chat, 'bauth', chat, chat_id, username, password)
         manager["chat_ready"] = "F"
@@ -46,9 +47,7 @@ def chat_login(chat, username, password):
 def chat_send(chat, *x):
         data = ':'.join(x).encode()
         byte = b'\x00' if manager["chat_ready"] == "T" else b'\r\n\x00'
-        manager["wbyte"] += data+byte
-        manager["chat_sockets"][chat].send(manager["wbyte"])
-        manager["wbyte"] = b''
+        manager["chats_wbyte"][chat] += data+byte
 
 def chat_ping(chat):
         chat_send(chat, "")
@@ -66,7 +65,7 @@ def pm_login(username, password):
         cumsock = socket.socket()
         cumsock.connect((pm_server, pm_port))
         manager["pm_socket"] = cumsock
-        manager["wbyte"] = b''
+        manager["pm_wbyte"] = b''
         auth = Auth(username, password)
         timer(30, pm_ping)
         pm_send('tlogin', auth, '2')
@@ -76,9 +75,8 @@ def pm_login(username, password):
 def pm_send(*x):
         data = ':'.join(x).encode()
         byte = b'\x00' if manager["pm_ready"] == "T" else b'\r\n\x00'
-        manager["wbyte"] += data+byte
-        manager["pm_socket"].send(manager["wbyte"])
-        manager["wbyte"] = b''
+        manager["pm_wbyte"] += data+byte
+
 
 def pm_ping():
         pm_send("")
@@ -97,6 +95,7 @@ def timer(seconds, function, *var):
 def bootup(username, password, chats):
   manager["tasks"] = []
   manager["chat_sockets"] = {}
+  manager["chats_wbyte"] = {}
   pm_login(username, password)
   for i in chats:
     chat_login(i, username, password)
@@ -106,14 +105,38 @@ def lemonize():
   manager["cake"] = "T"
   read_byte = b''
   while manager["cake"] == "T":
-        read_sock = list(manager["chat_sockets"].values())
-        read_sock.append(manager["pm_socket"])
-        r, w, e = select.select(read_sock, [],[], 0)
+        manager["sendoff"] = {}
+        connections = list(manager["chat_sockets"].values())
+        connections.append(manager["pm_socket"])
+
+        for i in manager["chats_wbyte"]:
+                if manager["chats_wbyte"][i] != b'':
+                        manager["sendoff"][manager["chat_sockets"][i]] = [i, manager["chats_wbyte"][i]]
+
+        write_sock = list(manager["sendoff"].keys())
+
+
+        if manager["pm_wbyte"] != b'':
+                write_sock.append(manager["pm_socket"])
+                manager["sendoff"][manager["pm_socket"]] = ["pm", manager["pm_wbyte"]]
+
+        r, w, e = select.select(connections, write_sock, [], 0.05)
+
         for i in r:
                 while not read_byte.endswith(b'\x00'):
                         read_byte += i.recv(1024)
                 print(read_byte)
                 read_byte = b''
+        for i in w:
+                content = manager["sendoff"][i][1]
+                _type = manager["sendoff"][i][0]
+                i.send(content)
+                if _type == "pm":
+                        manager["pm_wbyte"] = b''
+                else:
+                        manager["chats_wbyte"][_type] = b''
+
+
 
 def server(group):
     try:  s_number = str(specials[group])
