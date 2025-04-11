@@ -43,7 +43,7 @@ def chat_send(chat, *x):
 
 def chat_ping(chat):
         chat_send(chat, "")
-        
+
 def chat_post(chat, msg):
         msg = str(msg) if type(msg) == bool else msg
         msg = msg.replace(password, 'cake')
