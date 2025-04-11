@@ -16,11 +16,9 @@ SPARKING THE ANPAN
 BY HERENTI
 """
 
+# CHAT STUFF
 
-#CHAT STUFF
-
-
-def chat_login(chat, username, password):
+def chat_login(chat):
         chat_port = 443
         chat_server = server(chat)
         chat_id = str(random.randrange(10**15, 10**16))
@@ -55,14 +53,12 @@ def chat_post(chat, msg):
         else:
                 chat_send(chat, 'bmsg', 'fuck', '%s%s' % (font, msg))
 
-
-#PM STUFF
-
+# PM STUFF
 
 pm_server = 'c1.chatango.com'
 pm_port = 5222
 
-def pm_login(username, password):
+def pm_login():
         manager["pm_ready"] = "T"
         cumsock = socket.socket()
         cumsock.connect((pm_server, pm_port))
@@ -73,18 +69,15 @@ def pm_login(username, password):
         pm_send('tlogin', auth, '2')
         manager["pm_ready"] = "F"
 
-
 def pm_send(*x):
         data = ':'.join(x).encode()
         byte = b'\x00' if manager["pm_ready"] == "T" else b'\r\n\x00'
         manager["pm_wbyte"] += data+byte
 
-
 def pm_ping():
         pm_send("")
 
-
-#UNIVERSAL
+# UNIVERSAL
 
 username = 'anpanbot'
 password = ''
@@ -97,6 +90,7 @@ fontColor = '000000'
 
 manager = dict()
 
+room_list = []
 locked_chats = []
 
 def font_parse(x):
@@ -145,16 +139,15 @@ def server(group):
             s_number += int(x[0])
     return "s{}.chatango.com".format(s_number)
 
+# THE ANPAN
 
-#THE ANPAN
-
-def bootup(username, password, chats):
+def bootup():
   manager["tasks"] = []
   manager["chat_sockets"] = {}
   manager["chats_wbyte"] = {}
-  pm_login(username, password)
-  for i in chats:
-    chat_login(i, username, password)
+  pm_login()
+  for i in room_list:
+    chat_login(i)
   breadbun()
 
 def breadbun():
@@ -170,7 +163,6 @@ def breadbun():
                         manager["sendoff"][manager["chat_sockets"][i]] = [i, manager["chats_wbyte"][i]]
 
         write_sock = list(manager["sendoff"].keys())
-
 
         if manager["pm_wbyte"] != b'':
                 write_sock.append(manager["pm_socket"])
@@ -200,9 +192,7 @@ def breadbun():
                 else:
                         manager["chats_wbyte"][_type] = b''
 
-
-
-#EVENT HANDLER
+# EVENT HANDLER
 
 def event_call(target, function, *values):
         if target == 'self':
@@ -261,8 +251,7 @@ def on_post(message):
                         else:
                                 pass
 
-
-#WEIGHTS
+# WEIGHTS
 
 w12 = 75
 sv2 = 95
@@ -276,6 +265,4 @@ tagserver_weights = [["5", w12], ["6", w12], ["7", w12], ["8", w12], ["16", w12]
 
 specials = {'mitvcanal': 56, 'magicc666': 22, 'livenfree': 18, 'eplsiite': 56, 'soccerjumbo2': 21, 'bguk': 22, 'animachat20': 34, 'pokemonepisodeorg': 55, 'sport24lt': 56, 'mywowpinoy': 5, 'phnoytalk': 21, 'flowhot-chat-online': 12, 'watchanimeonn': 26, 'cricvid-hitcric-': 51, 'fullsportshd2': 18, 'chia-anime': 12, 'narutochatt': 52, 'ttvsports': 56, 'futboldirectochat': 22, 'portalsports': 18, 'stream2watch3': 56, 'proudlypinoychat': 51, 'ver-anime': 34, 'iluvpinas': 53, 'vipstand': 21, 'eafangames': 56, 'worldfootballusch2': 18, 'soccerjumbo': 21, 'myfoxdfw': 22, 'animelinkz': 20, 'rgsmotrisport': 51, 'bateriafina-8': 8, 'as-chatroom': 10, 'dbzepisodeorg': 12, 'tvanimefreak': 54, 'watch-dragonball': 19, 'narutowire': 10, 'leeplarp': 27}
 
-
-
-bootup(username, password, [])
+bootup()
