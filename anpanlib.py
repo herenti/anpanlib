@@ -9,6 +9,8 @@ import sys
 import threading
 import core
 import html
+import glob
+import importlib
 
 """
 ANPANLIB
@@ -78,9 +80,31 @@ def pm_send(*x):
 def pm_ping():
         pm_send("")
 
+# SELF FUNCTIONS
+
+def _setchannel(message, args):
+        try:
+                manager["chat_channel"][args['chat']] = str(channels[message])
+                return 'Channel set to '+ message+'.'
+        except:
+                return 'Not a valid channel.'
+
+def _eval(string, args):
+        if "password" in string.lower(): return 'fail'
+        else:
+            try:
+                ret = eval(string.decode() if type(string) == bytes else string)
+                return str(repr(ret))
+            except Exception: return str('%s' % get_error())
+
+def _reindex(message, args):
+        try: list(map(lambda x: exec('importlib.reload({a})'.format(a=x.replace('.py','') if x.replace('.py','') != 'anpanlib' else 'core')), glob.glob('*.py')))
+        except Exception: return '%s' % get_error()
+        return 'Reloaded Modules.'
+
 # UNIVERSAL
 
-username = 'anpanbot'
+username = ''
 password = ''
 
 prefix = '$'
@@ -94,6 +118,10 @@ manager = dict()
 debug = True
 
 debug_room = ""
+
+self_functions = ["eval","reindex", "setchannel"]
+
+mods = []
 
 room_list = []
 
@@ -120,6 +148,17 @@ def font_parse(x):
     x = x.replace('</font>','<f x%s%s="%s">' % (fontSise, fontColor, 0))
     close = '</f>'*x.count('<f x')
     return x+close
+
+def get_error():
+    try: et, ev, tb = sys.exc_info()
+    except Exception as e: print(e)
+    if not tb: return None
+    while tb:
+            line = tb.tb_lineno
+            file = tb.tb_frame.f_code.co_filename
+            tb = tb.tb_next
+    try: return "%s: %i: %s[%s]" % (file, line, et.__name__, str(ev))
+    except Exception as e: print(e)
 
 def regex(pattern, x, default):
         return re.search(pattern, x).group(1) if re.search(pattern, x) else default
@@ -265,7 +304,14 @@ def on_post(message):
                                 func = func[1:] if _prefix == True else func
                         except: _prefix = False
                         if _prefix:
-                                ret = event_call('core', func, string)
+                                if func in self_functions:
+                                        if message["user"] not in mods:
+                                                ret = "Foolish mortal."
+                                        else:
+                                                ret = event_call('self', func, string, message)
+                                else:
+                                        ret = event_call('core', func, string, message)
+                                ret = "That is not a valid command." if ret == None else ret
                                 chat_post(chat, ret)
                         else:
                                 pass
