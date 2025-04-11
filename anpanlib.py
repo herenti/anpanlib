@@ -43,7 +43,7 @@ def chat_send(chat, *x):
 
 def chat_ping(chat):
         chat_send(chat, "")
-
+        
 def chat_post(chat, msg):
         msg = str(msg) if type(msg) == bool else msg
         msg = msg.replace(password, 'cake')
@@ -51,8 +51,8 @@ def chat_post(chat, msg):
         font = '<n%s/><f x%s%s="%s">' % (nameColor, fontSise, fontColor, 0)
         if len(msg) > 2500:
             message, rest = msg[:2500], msg[2500:]
-            chat_send('bm', 'fuck', manager["chat_channel"][chat], '%s%s' % (font, message))
-            chat_post(rest)
+            chat_send(chat, 'bm', 'fuck', manager["chat_channel"][chat], '%s%s' % (font, message))
+            chat_post(chat, rest)
         else:
                 chat_send(chat, 'bm', 'fuck', manager["chat_channel"][chat], '%s%s' % (font, msg))
 
