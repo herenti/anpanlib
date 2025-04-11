@@ -51,7 +51,7 @@ def chat_post(chat, msg):
         font = '<n%s/><f x%s%s="%s">' % (nameColor, fontSise, fontColor, 0)
         if len(msg) > 2500:
             message, rest = msg[:2500], msg[2500:]
-            chat_send('bmsg', 'fuck', '%s%s' % (font, message))
+            chat_send('bm', 'fuck', manager["chat_channel"][chat], '%s%s' % (font, message))
             chat_post(rest)
         else:
                 chat_send(chat, 'bm', 'fuck', manager["chat_channel"][chat], '%s%s' % (font, msg))
