@@ -27,6 +27,7 @@ def chat_login(chat):
         manager["chat_sockets"][chat] = cumsock
         manager["chat_ready"] = "T"
         manager["chats_wbyte"][chat]= b''
+        manager["chat_channel"][chat] = default_channel
         timer(30, chat_ping, chat)
         chat_send(chat, 'bauth', chat, chat_id, username, password)
         manager["chat_ready"] = "F"
@@ -51,7 +52,7 @@ def chat_post(chat, msg):
             chat_send('bmsg', 'fuck', '%s%s' % (font, message))
             chat_post(rest)
         else:
-                chat_send(chat, 'bmsg', 'fuck', '%s%s' % (font, msg))
+                chat_send(chat, 'bm', 'fuck', manager["chat_channel"][chat], '%s%s' % (font, msg))
 
 # PM STUFF
 
@@ -90,8 +91,25 @@ fontColor = '000000'
 
 manager = dict()
 
+debug = True
+
+debug_room = ""
+
 room_list = []
-locked_chats = []
+
+locked_chats = [i for i in room_list if i != debug_room] if debug == True else []
+
+channels = {
+
+    "none": 0,
+    "red": 256,
+    "blue": 2048,
+    "shield": 64,
+    "staff": 128,
+    "mod": 32768,
+}
+
+default_channel = str(channels["blue"])
 
 def font_parse(x):
     x = x.replace("<font color='#",'< x')
@@ -145,6 +163,7 @@ def bootup():
   manager["tasks"] = []
   manager["chat_sockets"] = {}
   manager["chats_wbyte"] = {}
+  manager["chat_channel"] = {}
   pm_login()
   for i in room_list:
     chat_login(i)
