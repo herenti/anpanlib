@@ -11,11 +11,24 @@ import core
 import html
 import glob
 import importlib
+import json
 
 """
 ANPANLIB
 SPARKING THE ANPAN
 BY HERENTI
+
+Requirements:
+
+Create a core.py for the bot commands.
+
+Example command for core.py:
+
+def _say(message, args):
+        return message
+
+Fill out username, password, room_list and mods under the UNIVERSAL section.
+
 """
 
 # CHAT STUFF
@@ -102,10 +115,30 @@ def _reindex(message, args):
         except Exception: return '%s' % get_error()
         return 'Reloaded Modules.'
 
+def _whois(string, args):
+    a = [string]
+    while True:
+        l = len(a)
+        for n in a:
+            i = whois(n)
+            if len(i) > 0: a += i
+            else: a = ['no accounts for that user']; break
+            a = list(set(a))
+        if l == len(a):
+            break
+    return ', '.join(sorted(a))
+
 # UNIVERSAL
 
 username = ''
 password = ''
+
+room_list = []
+
+# Users that can use the built in bot commands.
+mods = []
+
+uids = {}
 
 prefix = '$'
 
@@ -119,11 +152,9 @@ debug = True
 
 debug_room = ""
 
-self_functions = ["eval","reindex", "setchannel"]
+self_functions = ["eval","reindex", "setchannel", "whois"]
 
-mods = []
-
-room_list = []
+mod_functions = ["eval","reindex","setchannel"]
 
 locked_chats = [i for i in room_list if i != debug_room] if debug == True else []
 
@@ -139,6 +170,21 @@ channels = {
 
 default_channel = str(channels["blue"])
 
+def build_variables():
+        _list = list(globals().keys())
+        manager["globals"] = {}
+        [exec('manager["globals"]["'+x+'"] = '+x) for x in _list]
+
+def ruids(k, v):
+    key, value = k.lower(), v.lower()
+    if key not in uids:
+        uids[key] = json.dumps([value])
+    else:
+        values = json.loads(uids[key])
+        if value not in values:
+            values.append(value)
+            uids[key] = json.dumps(values)
+
 def font_parse(x):
     x = x.replace("<font color='#",'< x')
     x = x.replace('">', '="0">')
@@ -148,6 +194,28 @@ def font_parse(x):
     x = x.replace('</font>','<f x%s%s="%s">' % (fontSise, fontColor, 0))
     close = '</f>'*x.count('<f x')
     return x+close
+
+def getuser(user, _id, uid, alias):
+        if user == '': user = 'None'
+        if user == 'None':
+                if alias == '':
+                        user = '@anon' + anon_id(_id, uid)
+                elif alias == 'None':
+                        user = '@anon' + anon_id(_id, uid)
+                else: user = '$' + alias
+        if '$' not in user:
+                if '@' not in user:
+                        if user.lower() != username:
+                                ruids(uid, user)
+        return user.lower()
+
+def whois(string):
+    a = []
+    for i in uids:
+        i = json.loads(uids[i])
+        if string in i:
+            a += i
+    return list(set(a))
 
 def get_error():
     try: et, ev, tb = sys.exc_info()
@@ -270,24 +338,19 @@ def _b(chat, data):
         user = data[1]
         alias = data[2]
         uid = data[3]
-        ip = data[6]
-        if user == '': user = 'None'
-        if user == 'None':
-                if alias == '' or 'None':
-                        user = '@anon' + anon_id(_id, uid)
-                else: user = '$' + alias
-        user = user.lower()
+        user = getuser(user, _id, uid, alias)
         message = dict(
                 chat=chat,
                 uid = uid,
                 cid = data[4],
                 time = data[0],
-                ip = ip,
+                ip = data[6],
                 content = content,
                 sid = None,
                 user = user
                 )
-        on_post(message)
+        if user != username:
+                on_post(message)
 
 def on_post(message):
         content = message["content"]
@@ -305,8 +368,11 @@ def on_post(message):
                         except: _prefix = False
                         if _prefix:
                                 if func in self_functions:
-                                        if message["user"] not in mods:
-                                                ret = "Foolish mortal."
+                                        if func in mod_functions:
+                                                if message["user"] not in mods:
+                                                        ret = "You do not have permission to use this command."
+                                                else:
+                                                        ret = event_call('self', func, string, message)
                                         else:
                                                 ret = event_call('self', func, string, message)
                                 else:
