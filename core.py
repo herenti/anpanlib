@@ -10,6 +10,7 @@ def regex(pattern, x, default):
 
 manager = {}
 manager["games"] = {}
+manager["game_session"] = {}
 
 slot_machine = {'Anpan': [0.1,1000000],
                 'deez nuts': [1, 100000],
@@ -52,17 +53,26 @@ def _bgtime(message, args):
 
 
 def _numbergame(message, args):
+    user = args["user"]
+    chat = args["chat"]
+    try:
+        derp = manager["games"][user]
+    except:
+        return 'You must register for games first. Use the [register] command.'
+    wallet = manager["games"][user]["wallet"]
+    title = manager["games"][user]["title"]
+    title = user if title == None else title
     try:
         if message == 'start':
             try:
-                manager["games"]["numbergame"]
+                manager["game_session"][chat]
                 return "There is already a game!!"
             except:
                 _num = random.randint(1,30)
-                manager["games"]["numbergame"] = _num
-                return "You have started the guessing game! Pick a number between 1 and 30."
+                manager["game_session"][chat] = dict(numbergame = _num)
+                return title+', you have started the guessing game! Everyone in the chat can play. Pick a number between 1 and 30. Command example is [numbergame 14]'
         else:
-            _num = manager["games"]["numbergame"]
+            _num = manager["game_session"][chat]["numbergame"]
             guess = message
             try:
                 guess = int(message)
@@ -73,10 +83,12 @@ def _numbergame(message, args):
             elif guess < _num:
                 return 'Too low!!'
             else:
-                del manager["games"]["numbergame"]
-                return 'Thats it!!!'
+                del manager["game_session"][chat]
+                wallet += 200
+                manager["games"][user]["wallet"] = wallet
+                return title+' thats it!!! [200 points added to your wallet.]'
     except:
-        return 'You must start the game first! "numbergame start"'
+        return 'You must start the game first! The command is [numbergame start]'
 
 
 #def _dicebet(message):
@@ -133,9 +145,9 @@ def _slot(message, args):
             wallet += amount
             manager["games"][user]["wallet"] = wallet
             if i == 'Anpan':
-                return final_results+'You hit the big Anpan jackpot!! You win '+str(amount)+' points. [-100 points for playing]'
+                return final_results+'You hit the big Anpan jackpot!! You win '+str(amount)+' points. [<b>-100</b> points for playing]'
             else:
-                return final_results+'You hit a three of a kind with ['+i[0]+']!!! You win '+str(amount)+' points. [-100 points for playing]'
+                return final_results+'You hit a three of a kind with ['+i[0]+']!!! You win '+str(amount)+' points. [<b>-100</b> points for playing]'
         elif i[1] == 2:
             outcome.remove(i[0])
             outcome.remove(i[0])
@@ -149,7 +161,7 @@ def _slot(message, args):
                 amount = 1
             wallet += amount
             manager["games"][user]["wallet"] = wallet
-            return final_results+'You hit a two of a kind with ['+i[0]+']!!! You win '+str(amount)+' points. [-100 points for playing]'
+            return final_results+'You hit a two of a kind with ['+i[0]+']!!! You win '+str(amount)+' points. [<b>-100</b> points for playing]'
         else:
             continue
     amount = [slot_machine[i][1]*(1/20) for i in outcome]
@@ -159,4 +171,4 @@ def _slot(message, args):
         amount = 1
     wallet += amount
     manager["games"][user]["wallet"] = wallet
-    return 'The results are '+final_results+'You win '+str(amount)+' points. [-100 points for playing]'
+    return 'The results are '+final_results+'You win '+str(amount)+' points. [<b>-100</b> points for playing]'
