@@ -11,7 +11,9 @@ def regex(pattern, x, default):
 manager = {}
 manager["games"] = {}
 
-slot_machine = {'Anpan': [1,100000],
+slot_machine = {'Anpan': [0.1,1000000],
+                'deez nuts': [1, 100000],
+                'pantsu':[3, 50000],
                 'Dildo': [20,10000],
                 'Squirrel': [25,7000],
                 'Fart wad': [30,6300],
@@ -81,11 +83,11 @@ def _numbergame(message, args):
     #each player bets a certain amount of points on a dice number, same for every player, winner takes all. cpu takes number not bet on for jackpot pool. maybe have a player wallet for betting games. one number rarest gives chance for jackpot. player can earn title with points.
 
 def _register(message, args):
+    user = args['user']
     try:
         manager["games"][user]
         return "You are already registered"
     except:
-        user = args["user"]
         manager["games"][user] = dict(
             wallet = 1000,
             title = None,
@@ -98,7 +100,7 @@ def _check(message, args):
     if message.lower() == "wallet":
         return str(manager["games"][user]["wallet"])
 
-def _slotmachine(message, args):
+def _slot(message, args):
     user = args["user"]
     try:
         derp = manager["games"][user]
@@ -113,9 +115,10 @@ def _slotmachine(message, args):
     choice_pool = []
     for i in slot_machine:
         _num = slot_machine[i][0]
+        _num = int(_num*10)
         [choice_pool.append(i) for x in range(_num)]
     outcome = []
-    for i in [1,2,3]:
+    for i in range(3):
         outcome.append(random.choice(choice_pool))
     result_num = []
     for i in slot_machine:
