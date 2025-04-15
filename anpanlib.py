@@ -22,12 +22,14 @@ Requirements:
 
 Create a core.py for the bot commands.
 
-Example command for core.py:
+Must have a "bootup" function in the core.py that can return None if you want.
+
+Example bot command for core.py:
 
 def _say(message, args):
         return message
 
-Fill out username, password, room_list and mods under the UNIVERSAL section.
+Fill out username, password, room_list, debug_room, and mods under the UNIVERSAL section.
 
 """
 
@@ -40,6 +42,8 @@ def chat_login(chat):
         cumsock = socket.socket()
         cumsock.connect((chat_server, chat_port))
         manager["chat_sockets"][chat] = cumsock
+        manager["chatinfo"][chat] = {}
+        manager["chatinfo"][chat]["history"] = set()
         manager["chat_ready"] = "T"
         manager["chats_wbyte"][chat]= b''
         manager["chat_channel"][chat] = default_channel
@@ -93,6 +97,9 @@ def pm_send(*x):
 def pm_ping():
         pm_send("")
 
+def pm_post(user, x):
+        pm_send('msg', user, x.replace('<', '[').replace('>',']'))
+
 # SELF FUNCTIONS
 
 def _setchannel(message, args):
@@ -128,17 +135,27 @@ def _whois(string, args):
             break
     return ', '.join(sorted(a))
 
+def _pm(message, args):
+        user, message = message.split(' ', 1)
+        message = "This is a forwarded message from the user: "+args['user'] + ". Message: "+ message
+        pm_post(user, message)
+        return "Message sent."
+
 # UNIVERSAL
+
+manager = dict()
 
 username = ''
 password = ''
 
 room_list = []
 
-# Users that can use the built in bot commands.
-mods = []
+# Users that can use the built in bot commands in anpanlib.py.
+manager["mods"] = []
 
-uids = {}
+debug = True
+
+debug_rooms = []
 
 prefix = '$'
 
@@ -146,17 +163,17 @@ nameColor = '000000'
 fontSise = '11'
 fontColor = '000000'
 
-manager = dict()
+self_functions = ["eval","reindex", "setchannel", "whois", "pm"]
 
-debug = True
+mod_functions = ["eval","reindex","setchannel", "pm"]
 
-debug_room = ""
+manager["essentials"] = {'chat_post': chat_post,
+                         'pm_post': pm_post
+                         }
 
-self_functions = ["eval","reindex", "setchannel", "whois"]
+locked_chats = [i for i in room_list if i not in debug_rooms] if debug == True else []
 
-mod_functions = ["eval","reindex","setchannel"]
-
-locked_chats = [i for i in room_list if i != debug_room] if debug == True else []
+core_setup = True
 
 channels = {
 
@@ -170,20 +187,17 @@ channels = {
 
 default_channel = str(channels["blue"])
 
-def build_variables():
-        _list = list(globals().keys())
-        manager["globals"] = {}
-        [exec('manager["globals"]["'+x+'"] = '+x) for x in _list]
+setattr(core, 'manager', manager)
 
 def ruids(k, v):
     key, value = k.lower(), v.lower()
-    if key not in uids:
-        uids[key] = json.dumps([value])
+    if key not in manager["uids"]:
+        manager["uids"][key] = json.dumps([value])
     else:
-        values = json.loads(uids[key])
+        values = json.loads(manager["uids"][key])
         if value not in values:
             values.append(value)
-            uids[key] = json.dumps(values)
+            manager["uids"][key] = json.dumps(values)
 
 def font_parse(x):
     x = x.replace("<font color='#",'< x')
@@ -211,8 +225,8 @@ def getuser(user, _id, uid, alias):
 
 def whois(string):
     a = []
-    for i in uids:
-        i = json.loads(uids[i])
+    for i in manager["uids"]:
+        i = json.loads(manager["uids"][i])
         if string in i:
             a += i
     return list(set(a))
@@ -271,6 +285,9 @@ def bootup():
   manager["chat_sockets"] = {}
   manager["chats_wbyte"] = {}
   manager["chat_channel"] = {}
+  manager["chatinfo"] = {}
+  manager["ghistory"] = {}
+  manager["uids"] = {}
   pm_login()
   for i in room_list:
     chat_login(i)
@@ -329,6 +346,15 @@ def event_call(target, function, *values):
         if hasattr(target, function):
                return getattr(target, function)(*values)
 
+def _ok(chat, data):
+        manager["chatinfo"][chat] = {
+                'mods': data[6].split(';'),
+                'owner': data[0],
+                'history': list(),
+                'banlist': list(),
+                'unbanlist': list()
+                }
+
 def _b(chat, data):
         _id = re.search("<n(.*?)/>", ':'.join(data[9:]))
         if _id:
@@ -352,8 +378,58 @@ def _b(chat, data):
         if user != username:
                 on_post(message)
 
+'''def _participant(self, data, net):
+        ctype = data[0]
+        puser = {
+            'user': getuser(data[3], str(data[6].split('.')[0][-4:]), data[2], data[4]),
+            'joinTime': data[6],
+            'uid': data[2],
+            'sid': data[1]
+          }
+        y = [x for x in manager["chatinfo"]["pdata"] if x["sid"] == puser"sid"]]
+        if ctype == '0': manager["chatinfo"]["pdata"].remove(y[0])
+        elif ctype == '1': manager["chatinfo"]["pdata"].append(puser)
+        elif ctype == '2':
+            manager["chatinfo"]["pdata"].remove(y[0])
+            net.chatInfo.pData.append(pUser)
+        manager["chatinfo"][chat]["userlist"] = [x.user.name for x in net.chatInfo.pData]'''
+
+def _inited(chat, data):
+        print('connected sucessfully to '+ chat)
+        init = [['g_participants', 'start'],
+               ['blocklist', 'block', '', 'next', '500'],
+               ['blocklist', 'unblock', '', 'next', '500'],
+               ['getbannedwords'],
+               ['getpremium', '1'],
+               ['msgbg', '1']]
+        #if _fullhistory:
+                #manager["ghistory"][chat] = timer(0.1, chat_send, chat, 'get_more', '35')
+        [chat_send(chat, x[0], *x[1:]) for x in init]
+
+def _i(chat, data):
+        _id = re.search("<n(.*?)/>", ':'.join(data[9:]))
+        if _id: _id = _id.group(1)
+        hist = {
+                'user': getuser(data[1], _id, data[3], data[2]),
+                'cid': data[4],
+                'uid': data[3],
+                'time': data[0],
+                'sid': data[5],
+                'ip': data[6],
+                'content': ':'.join(data[9:]),
+                'chat': chat
+                }
+        manager["chatinfo"][chat]["history"].append(hist)
+
+def _nomore(chat, data):
+        print('nomore')
+        manager["ghistory"][chat].set()
+        del manager["ghistory"][chat]
+
 def on_post(message):
         content = message["content"]
+        if "herenti" in content.lower():
+                print(message["user"], content)
         chat = message["chat"]
         if len(content) > 0:
                 if chat not in locked_chats:
@@ -369,7 +445,7 @@ def on_post(message):
                         if _prefix:
                                 if func in self_functions:
                                         if func in mod_functions:
-                                                if message["user"] not in mods:
+                                                if message["user"] not in manager["mods"]:
                                                         ret = "You do not have permission to use this command."
                                                 else:
                                                         ret = event_call('self', func, string, message)
@@ -395,5 +471,9 @@ sv12 = 116
 tagserver_weights = [["5", w12], ["6", w12], ["7", w12], ["8", w12], ["16", w12], ["17", w12], ["18", w12], ["9", sv2], ["11", sv2], ["12", sv2], ["13", sv2], ["14", sv2], ["15", sv2], ["19", sv4], ["23", sv4], ["24", sv4], ["25", sv4], ["26", sv4], ["28", sv6], ["29", sv6], ["30", sv6], ["31", sv6], ["32", sv6], ["33", sv6], ["35", sv8], ["36", sv8], ["37", sv8], ["38", sv8], ["39", sv8], ["40", sv8], ["41", sv8], ["42", sv8], ["43", sv8], ["44", sv8], ["45", sv8], ["46", sv8], ["47", sv8], ["48", sv8], ["49", sv8], ["50", sv8], ["52", sv10], ["53", sv10], ["55", sv10], ["57", sv10], ["58", sv10], ["59", sv10], ["60", sv10], ["61", sv10], ["62", sv10], ["63", sv10], ["64", sv10], ["65", sv10], ["66", sv10], ["68", sv2], ["71", sv12], ["72", sv12], ["73", sv12], ["74", sv12], ["75", sv12], ["76", sv12], ["77", sv12], ["78", sv12], ["79", sv12], ["80", sv12], ["81", sv12], ["82", sv12], ["83", sv12], ["84", sv12]]
 
 specials = {'mitvcanal': 56, 'magicc666': 22, 'livenfree': 18, 'eplsiite': 56, 'soccerjumbo2': 21, 'bguk': 22, 'animachat20': 34, 'pokemonepisodeorg': 55, 'sport24lt': 56, 'mywowpinoy': 5, 'phnoytalk': 21, 'flowhot-chat-online': 12, 'watchanimeonn': 26, 'cricvid-hitcric-': 51, 'fullsportshd2': 18, 'chia-anime': 12, 'narutochatt': 52, 'ttvsports': 56, 'futboldirectochat': 22, 'portalsports': 18, 'stream2watch3': 56, 'proudlypinoychat': 51, 'ver-anime': 34, 'iluvpinas': 53, 'vipstand': 21, 'eafangames': 56, 'worldfootballusch2': 18, 'soccerjumbo': 21, 'myfoxdfw': 22, 'animelinkz': 20, 'rgsmotrisport': 51, 'bateriafina-8': 8, 'as-chatroom': 10, 'dbzepisodeorg': 12, 'tvanimefreak': 54, 'watch-dragonball': 19, 'narutowire': 10, 'leeplarp': 27}
+
+# Set core_setup to False if not used in core.py
+if core_setup:
+        core.setup()
 
 bootup()
