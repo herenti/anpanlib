@@ -8,9 +8,9 @@ from datetime import datetime
 def regex(pattern, x, default):
         return re.search(pattern, x).group(1) if re.search(pattern, x) else default
 
-manager = {}
-manager["games"] = {}
-manager["game_session"] = {}
+def setup():
+    manager["games"] = {}
+    manager["game_session"] = {}
 
 slot_machine = {'Anpan': [0.1,1000000],
                 'deez nuts': [1, 100000],
@@ -133,6 +133,10 @@ def _dice(message, args):
                 manager["game_session"][chat]["dice"]["pot"] = 0
                 return title+', you have started a round of dice betting. Up to seven users may play. Minimum of two. Place bets with this command on numbers 1-7 of the dice sides: example: [dice bet 6]. When all players are ready use the command [dice roll].'
     elif command == 'bet':
+        try:
+            manager["game_session"][chat]["dice"]
+        except:
+            return "You must start the game first with the command [dice start]"
         if number > 7:
             return "That is not a valid number."
         elif number < 1:
@@ -151,6 +155,10 @@ def _dice(message, args):
             manager["game_session"][chat]["dice"]["users"][user] = number
             return "You have bet %s on the number %s." % (amount, number)
     elif command == "roll":
+        try:
+            manager["game_session"][chat]["dice"]
+        except:
+            return "You must start the game first with the command [dice start]"
         if user not in manager["game_session"][chat]["dice"]["users"]:
             return "You are not playing this game. Place a bet first."
         elif len(manager["game_session"][chat]["dice"]["users"]) < 2:
