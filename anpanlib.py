@@ -22,7 +22,7 @@ Requirements:
 
 Create a core.py for the bot commands.
 
-Must have a "bootup" function in the core.py that can return None if you want.
+Must have a "settup" function in the core.py that can return None if you want.
 
 Example bot command for core.py:
 
